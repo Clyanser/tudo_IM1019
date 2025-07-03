@@ -1,4 +1,4 @@
-package models
+package auth_models
 
 import "tudo_IM1019/common/models"
 

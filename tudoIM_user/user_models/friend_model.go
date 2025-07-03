@@ -1,4 +1,4 @@
-package models
+package user_models
 
 import "tudo_IM1019/common/models"
 
