@@ -1,0 +1,27 @@
+Name: auth
+Host: 0.0.0.0
+Port: 20021
+Mysql:
+  Dsn: root:123123@tcp(127.0.0.1:3306)/tudo_im?charset=utf8mb4&parseTime=True&loc=Local
+Auth:
+  AccessSecret : xxx1234
+  AccessExpire : 3600
+Log:
+  ServiceName: auth
+  Encoding: plain
+  Stat: false
+  TimeFormat: 2006-01-02 15:04:05
+Redis:
+  Addr: 127.0.0.1:6379
+  Pwd:
+  DB: 0
+Etcd: 127.0.0.1:2379
+OpenLoginList :
+  - name: QQ登录
+    icon:
+    href:
+UserRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    key: userrpc.rpc

@@ -1,0 +1,14 @@
+tudoIM1019_server
+  api
+    fim_gateway   网关            127.0.0.1:9000
+    fim_auth      认证服务         127.0.0.1:20021
+    fim_user      用户服务         127.0.0.1:20022
+    fim_chat      对话服务         127.0.0.1:20023
+    fim_group     群聊服务         127.0.0.1:20024
+    fim_file      文件服务         127.0.0.1:20025
+    fim_settings  系统服务         127.0.0.1:20026
+  rpc
+    fim_user      用户rpc服务         127.0.0.1:30022
+    fim_chat      对话rpc服务         127.0.0.1:30023
+    fim_file      文件rpc服务         127.0.0.1:30024
+    fim_group     群聊rpc服务         127.0.0.1:30025

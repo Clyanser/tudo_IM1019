@@ -1,0 +1,18 @@
+##根据接口设计生成代码
+goctl api go -api core.api -dir . -style go_zero
+
+goctl api go -api auth_api.api -dir . --home ../../template
+
+root:123123@tcp(localhost:3306)/1019Cloud?charset=utf8&parseTime=true
+
+##解决windos 莫名的端口占用
+
+PS C:\Users\Jaory> net stop winnat
+
+Windows NAT Driver 服务已成功停止。
+
+PS C:\Users\Jaory> net start winnat
+
+Windows NAT Driver 服务已经启动成功。
+
+PS C:\Users\Jaory>

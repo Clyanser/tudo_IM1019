@@ -1,0 +1,15 @@
+Name: userrpc.rpc
+ListenOn: 0.0.0.0:8080
+Etcd:
+  Hosts:
+  - 127.0.0.1:2379
+  Key: userrpc.rpc
+
+Mysql:
+  Dsn: root:123123@tcp(127.0.0.1:3306)/tudo_im?charset=utf8mb4&parseTime=True&loc=Local
+
+Log:
+  ServiceName: auth
+  Encoding: plain
+  Stat: false
+  TimeFormat: 2006-01-02 15:04:05
