@@ -74,6 +74,9 @@ func IM_gateway(res http.ResponseWriter, req *http.Request) {
 
 	// 恢复 body，供后续 proxyReq 使用
 	req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+	//调试信息
+	//logx.Infof("bodybytes %s", string(bodyBytes))  // 查看内容
+	//logx.Infof("bodybytes 长度: %d", len(bodyBytes)) // 查看长度
 	// 获取客户端 IP
 	// 添加 X-Forwarded-For
 	remoteIP := strings.Split(req.RemoteAddr, ":")[0]
@@ -82,8 +85,8 @@ func IM_gateway(res http.ResponseWriter, req *http.Request) {
 	whiteList := map[string]bool{
 		"/api/auth/login":          true,
 		"/api/auth/register":       true,
-		"/api/auth/authentication": true,
 		"/api/auth/logout":         true,
+		"/api/auth/authentication": true,
 	}
 	if _, ok := whiteList[req.URL.Path]; !ok {
 		// 请求认证服务的地址
@@ -95,9 +98,20 @@ func IM_gateway(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		authUrl := fmt.Sprintf("http://%s/auth/api/authentication", authAddr)
-		logx.Infof("认证服务地址：%s", authAddr)
+		authUrl := fmt.Sprintf("http://%s/api/auth/authentication", authAddr)
+		logx.Infof("构造的认证服务 URL：%s", authUrl)
+		//调试信息
+		//logx.Infof("bodybytes %s", string(bodyBytes))  // 查看内容
+		//logx.Infof("bodybytes 长度: %d", len(bodyBytes)) // 查看长度
 		authReq, _ := http.NewRequest("POST", authUrl, bytes.NewReader(bodyBytes))
+
+		//拷贝请求头
+		for k, vv := range req.Header {
+			for _, v := range vv {
+				authReq.Header.Add(k, v)
+			}
+		}
+
 		authReq.Header.Set("X-Forwarded-For", remoteIP)
 
 		client := &http.Client{Timeout: 5 * time.Second} // 带超时的 client
@@ -118,13 +132,29 @@ func IM_gateway(res http.ResponseWriter, req *http.Request) {
 				Role   int    `json:"role"`
 			} `json:"data"`
 		}
-		var AuthResponse Resp
-		bytedata, _ := io.ReadAll(authResp.Body)
-		autherr := json.Unmarshal(bytedata, &AuthResponse)
-		if autherr != nil {
-			logx.Errorf("JSON解析失败: %v", autherr)
+
+		bytedata, readErr := io.ReadAll(authResp.Body)
+		if readErr != nil {
+			logx.Errorf("读取认证服务响应失败: %v", readErr)
 			res.WriteHeader(http.StatusInternalServerError)
 			FailResponse("认证服务不可用", res)
+			return
+		}
+
+		// 判断是否是有效的 JSON
+		if !json.Valid(bytedata) {
+			logx.Errorf("认证服务返回非 JSON 数据: %s", string(bytedata))
+			res.WriteHeader(http.StatusInternalServerError)
+			FailResponse("认证服务返回格式错误", res)
+			return
+		}
+
+		var AuthResponse Resp
+		autherr := json.Unmarshal(bytedata, &AuthResponse)
+		if autherr != nil {
+			logx.Errorf("JSON解析失败: %v, 原始数据: %s", autherr, string(bytedata))
+			res.WriteHeader(http.StatusInternalServerError)
+			FailResponse("认证服务返回格式错误", res)
 			return
 		}
 

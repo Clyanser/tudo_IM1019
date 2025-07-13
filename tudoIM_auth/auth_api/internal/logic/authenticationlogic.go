@@ -28,19 +28,22 @@ func NewAuthenticationLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Au
 
 func (l *AuthenticationLogic) Authentication(token string) (resp *types.AuthenticationResponse, err error) {
 	if token == "" {
-		err = errors.New("认证失败")
+		logx.Info("token is empty")
+		err = errors.New("token is empty")
 		return
 	}
 	//验证token
 	cliams, err := jwts.ParseToken(token, l.svcCtx.Config.Auth.AccessSecret)
 	if err != nil {
-		err = errors.New("认证失败")
+		logx.Errorf("jwt parse token err: %v", err)
+		err = errors.New("jwt parse token err")
 		return
 	}
 	//查看是否已注销
 	_, err = l.svcCtx.RDB.Get(fmt.Sprintf("logout_%s", token)).Result()
 	if err == nil {
-		err = errors.New("认证失败")
+		logx.Errorf("logout_%s is exist", token)
+		err = errors.New("logout is exist")
 		return
 	}
 
