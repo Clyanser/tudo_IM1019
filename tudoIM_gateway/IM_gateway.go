@@ -128,7 +128,7 @@ func IM_gateway(res http.ResponseWriter, req *http.Request) {
 			Code int    `json:"code"`
 			Msg  string `json:"msg"`
 			Data *struct {
-				UserID uint64 `json:"user_id"`
+				UserID uint64 `json:"userId"`
 				Role   int    `json:"role"`
 			} `json:"data"`
 		}
@@ -164,6 +164,8 @@ func IM_gateway(res http.ResponseWriter, req *http.Request) {
 			res.Write(bytedata)
 			return
 		}
+		//调试信息
+		logx.Infof("Setting headers -> User-ID: %d, Role: %d", AuthResponse.Data.UserID, AuthResponse.Data.Role)
 		//传递用户信息
 		if AuthResponse.Data != nil {
 			req.Header.Set("User-ID", fmt.Sprintf("%d", AuthResponse.Data.UserID))

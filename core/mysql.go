@@ -18,7 +18,7 @@ func InitMysql() *gorm.DB {
 		Logger: mysqlLogger,
 	})
 	if err != nil {
-		log.Fatalf(fmt.Sprintf("[%s] mysql连接失败", dsn), err)
+		log.Fatalf("[%s] mysql连接失败: %v", dsn, err)
 	}
 	sqlDB, _ := db.DB()
 	sqlDB.SetMaxIdleConns(10)               // 最大空闲连接数
@@ -28,11 +28,12 @@ func InitMysql() *gorm.DB {
 }
 
 func InitGorm(MysqlDataSource string) *gorm.DB {
-	db, err := gorm.Open(mysql.Open(MysqlDataSource), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(MysqlDataSource), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info), // 开启 Info 日志
+	})
 	if err != nil {
 		panic("连接mysql数据库失败, error=" + err.Error())
-	} else {
-		fmt.Println("连接mysql数据库成功")
 	}
+	fmt.Println("连接mysql数据库成功")
 	return db
 }

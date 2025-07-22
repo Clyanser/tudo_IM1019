@@ -8,6 +8,7 @@ import (
 type UserConfModel struct {
 	models.Model
 	UserID               uint                        `json:"user_id"`
+	UserModel            UserModel                   `gorm:"foreignKey:UserID" json:"-"`
 	RecallMessage        *string                     `json:"recall_message"`        //撤回消息的回复内容
 	FriendOnline         bool                        `json:"friend_online"`         //好友上线提醒
 	Sound                bool                        `json:"sound"`                 //提醒声音
