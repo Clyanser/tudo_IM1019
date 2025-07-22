@@ -94,7 +94,8 @@ func (l *UserInfoUpdateLogic) UserInfoUpdate(req *types.UserInfoUpdateRequest) (
 		}
 	}
 
-	return &types.UserInfoUpdateResponse{
-		Message: "更新成功",
-	}, nil
+	//return &types.UserInfoUpdateResponse{
+	//	Message: "更新成功",
+	//}, nil
+	return
 }

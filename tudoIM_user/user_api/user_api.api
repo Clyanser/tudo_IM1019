@@ -47,23 +47,17 @@ type UserInfoUpdateRequest {
 type UserInfoUpdateResponse {}
 
 type FriendInfoRequest {
-	UserID uint `header:"User-ID"`
-	Role   int8 `header:"Role"`
+	UserID   uint `header:"User-ID"`
+	Role     int8 `header:"Role"`
+	FriendID uint `form:"friendID"`
 }
 
 type FriendInfoResponse {
-	UserID               uint                  `json:"userID"`
-	Nickname             string                `json:"nickname"`
-	Abstract             string                `json:"abstract"`
-	Avatar               string                `json:"avatar"`
-	RecallMessage        *string               `json:"recallMessage"`
-	FriendOnline         bool                  `json:"friendOnline"`
-	Sound                bool                  `json:"sound"`
-	SecureLink           bool                  `json:"secureLink"`
-	SavePwd              bool                  `json:"savePwd"`
-	SearchUser           int8                  `json:"searchUser"`
-	Verification         int8                  `json:"verification"`
-	VerificationQuestion *VerificationQuestion `json:"verificationQuestion"`
+	UserID   uint   `json:"userID"`
+	Nickname string `json:"nickname"`
+	Abstract string `json:"abstract"`
+	Avatar   string `json:"avatar"`
+	Notice   string `json:"notice"`
 }
 
 service users {
