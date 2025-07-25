@@ -1,0 +1,11 @@
+syntax = "v1"
+
+type SettingsInfoRequest {}
+
+type SettingsInfoResponse {}
+
+service settings {
+	@handler settingsInfo
+	post /api/settings/info (SettingsInfoRequest) returns (SettingsInfoResponse) //图片上传
+} //goctl api go -api settings_api.api -dir . --home ../../template
+

@@ -1,0 +1,26 @@
+Name: file
+Host: 0.0.0.0
+Port: 20025
+MaxBytes: 5368709120
+Log:
+  ServiceName: auth
+  Encoding: plain
+  Stat: false
+  TimeFormat: 2006-01-02 15:04:05
+
+Etcd: 127.0.0.1:2379
+
+FileSize: 0.5 #单位是MB
+
+WhiteList:
+  - png
+  - PNG
+  - jpg
+  - JPG
+  - jpeg
+  - JPEG
+  - gif
+  - GIF
+  - webp
+  - WEBP
+UploadDir: uploads
