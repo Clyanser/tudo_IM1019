@@ -19,3 +19,18 @@ type UserConfModel struct {
 	VerificationQuestion *ctype.VerificationQuestion `json:"verification_question"` //好友验证问题类型
 	IsOnline             bool                        `json:"is_online"`
 }
+
+func (uc UserConfModel) ProblemCount() (c int) {
+	if uc.VerificationQuestion != nil {
+		if uc.VerificationQuestion.Problem1 != nil {
+			c += 1
+		}
+		if uc.VerificationQuestion.Problem2 != nil {
+			c += 1
+		}
+		if uc.VerificationQuestion.Problem3 != nil {
+			c += 1
+		}
+	}
+	return
+}

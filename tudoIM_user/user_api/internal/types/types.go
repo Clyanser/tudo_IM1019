@@ -3,6 +3,16 @@
 
 package types
 
+type AddFriendRequest struct {
+	UserID               uint                  `header:"User-ID"`
+	FriendID             uint                  `json:"friendId"`
+	Verify               string                `json:"verify,optional"`
+	VerificationQuestion *VerificationQuestion `json:"verificationQuestion,optional"`
+}
+
+type AddFriendResponse struct {
+}
+
 type FriendInfoRequest struct {
 	UserID   uint `header:"User-ID"`
 	Role     int8 `header:"Role"`
@@ -27,6 +37,36 @@ type FriendListRequest struct {
 type FriendListResponse struct {
 	List  []FriendInfoResponse
 	Count int `json:"count"`
+}
+
+type FriendNoticeUpdateRequest struct {
+	UserID   uint   `header:"User-ID"`
+	FriendID uint   `json:"friendId"`
+	Notice   string `json:"notice"`
+}
+
+type FriendNoticeUpdateResponse struct {
+}
+
+type SearchInfo struct {
+	UserID   uint   `json:"userID"`
+	Nickname string `json:"nickname"`
+	Abstract string `json:"abstract"`
+	Avatar   string `json:"avatar"`
+	IsFriend bool   `json:"isFriend"` //是否是好友
+}
+
+type SerachRequest struct {
+	UserID uint   `"header:User-ID"`
+	Key    string `form:"key"`
+	Online bool   `form:"online"`
+	Page   int    `form:"page,optional"`
+	Limit  int    `form:"limit,optional"`
+}
+
+type SerachResponse struct {
+	List  []SearchInfo `json:"list"`
+	Count int64        `json:"count"`
 }
 
 type UserInfoRequest struct {
@@ -65,6 +105,16 @@ type UserInfoUpdateRequest struct {
 }
 
 type UserInfoUpdateResponse struct {
+}
+
+type UserVerifyRequest struct {
+	UserID   uint `header:"User-ID"`
+	FriendID uint `json:"friendId"`
+}
+
+type UserVerifyResponse struct {
+	FriendVerification   int8                 `json:"friendVerification"`
+	VerificationQuestion VerificationQuestion `json:"verificationQuestion"` //包含问题和答案，但是答案不返回
 }
 
 type VerificationQuestion struct {

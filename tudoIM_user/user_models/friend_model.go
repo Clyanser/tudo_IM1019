@@ -21,3 +21,7 @@ func (f *FriendModel) IsFriend(db *gorm.DB, a, b uint) bool {
 	}
 	return true
 }
+func (f *FriendModel) Friends(db *gorm.DB, userID uint) (list []FriendModel) {
+	db.Find(&list, "send_user_id = ?  or rev_user_id = ? ", userID, userID)
+	return
+}

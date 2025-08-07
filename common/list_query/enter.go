@@ -8,6 +8,7 @@ import (
 
 type Option struct {
 	PageInfo models.PageInfo
+	Join     string
 	Where    *gorm.DB //高级查询
 	likes    []string //模糊匹配的字段
 	Preload  []string //预加载字段
@@ -55,7 +56,9 @@ type Option struct {
 //	}
 func ListQuery[T any](db *gorm.DB, model T, option Option) (list []T, count int64, err error) {
 	query := db.Model(&model)
-
+	if option.Join != "" {
+		query = query.Joins(option.Join)
+	}
 	// ✅ 应用传入的 WHERE 条件
 	if option.Where != nil {
 		query = query.Where(option.Where)

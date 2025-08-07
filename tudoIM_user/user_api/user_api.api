@@ -72,6 +72,54 @@ type FriendListResponse {
 	Count int `json:"count"`
 }
 
+type FriendNoticeUpdateRequest {
+	UserID   uint   `header:"User-ID"`
+	FriendID uint   `json:"friendId"`
+	Notice   string `json:"notice"`
+}
+
+type FriendNoticeUpdateResponse {}
+
+type SerachRequest {
+	UserID uint   `"header:User-ID"`
+	Key    string `form:"key"`
+	Online bool   `form:"online"`
+	Page   int    `form:"page,optional"`
+	limit  int    `form:"limit,optional"`
+}
+
+type SearchInfo {
+	UserID   uint   `json:"userID"`
+	Nickname string `json:"nickname"`
+	Abstract string `json:"abstract"`
+	Avatar   string `json:"avatar"`
+	IsFriend bool   `json:"isFriend"` //是否是好友
+}
+
+type SerachResponse {
+	List  []SearchInfo `json:"list"`
+	Count int64        `json:"count"`
+}
+
+type UserVerifyRequest {
+	UserID   uint `header:"User-ID"`
+	FriendID uint `json:"friendId"`
+}
+
+type UserVerifyResponse {
+	FriendVerification   int8                 `json:"friendVerification"`
+	VerificationQuestion VerificationQuestion `json:"verificationQuestion"` //包含问题和答案，但是答案不返回
+}
+
+type AddFriendRequest {
+	UserID               uint                  `header:"User-ID"`
+	FriendID             uint                  `json:"friendId"`
+	Verify               string                `json:"verify,optional"`
+	VerificationQuestion *VerificationQuestion `json:"verificationQuestion,optional"`
+}
+
+type AddFriendResponse {}
+
 service users {
 	@handler UserInfo
 	get /api/user/user_info (UserInfoRequest) returns (UserInfoResponse) // 用户信息接口\
@@ -84,5 +132,17 @@ service users {
 
 	@handler FriendList
 	get /api/user/friend_list (FriendListRequest) returns (FriendListResponse) //好友列表接口
+
+	@handler FriendNoticeUpdate
+	put /api/user/friends_notice_update (FriendNoticeUpdateRequest) returns (FriendNoticeUpdateResponse) //修改好友备注
+
+	@handler Search
+	get /api/user/search (SerachRequest) returns (SerachResponse) //好友列表接口
+
+	@handler UserVerify
+	post /api/user/varify (UserVerifyRequest) returns (UserVerifyResponse) // 好友验证
+
+	@handler AddFriend
+	post /api/user/addFriend (AddFriendRequest) returns (AddFriendResponse) // 添加好友
 } // goctl api go -api user_api.api -dir . --home ../../template
 
