@@ -54,6 +54,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/api/user/varify",
 				Handler: UserVerifyHandler(serverCtx),
 			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/api/user/varifyList",
+				Handler: FriendVerifyListHandler(serverCtx),
+			},
 		},
 	)
 }

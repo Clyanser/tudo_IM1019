@@ -1,0 +1,21 @@
+Addr: ":8080"
+Etcd: "127.0.0.1:2379"
+
+Log:
+  ServiceName: auth
+  Encoding: plain
+  Stat: false
+  TimeFormat: 2006-01-02 15:04:05
+
+
+Whitelist:
+  - /api/auth/login
+  - /api/auth/register
+  - /api/auth/logout
+  - /api/auth/authentication
+
+Services:
+  auth: auth_api
+  user: user_api
+  chat: chat_api
+  group: group_api
