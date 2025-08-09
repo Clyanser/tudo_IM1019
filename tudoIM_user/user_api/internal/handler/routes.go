@@ -20,6 +20,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: AddFriendHandler(serverCtx),
 			},
 			{
+				Method:  http.MethodDelete,
+				Path:    "/api/user/friend_delete",
+				Handler: FriendDeleteHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodGet,
 				Path:    "/api/user/friend_info",
 				Handler: FriendInfoHandler(serverCtx),
@@ -58,6 +63,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/api/user/varifyList",
 				Handler: FriendVerifyListHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPut,
+				Path:    "/api/user/verifyStatus",
+				Handler: FriendVerifyStatusHandler(serverCtx),
 			},
 		},
 	)

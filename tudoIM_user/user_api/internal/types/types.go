@@ -13,6 +13,14 @@ type AddFriendRequest struct {
 type AddFriendResponse struct {
 }
 
+type FriendDeleteRequest struct {
+	UserID   uint `header:"User-ID"`
+	FriendID uint `json:"friendId"`
+}
+
+type FriendDeleteResponse struct {
+}
+
 type FriendInfoRequest struct {
 	UserID   uint `header:"User-ID"`
 	Role     int8 `header:"Role"`
@@ -69,6 +77,15 @@ type FriendValidRequest struct {
 type FriendValidResponse struct {
 	List  []FriendValidInfo `json:"list"`
 	Count int64             `json:"count"`
+}
+
+type FriendVerifyStatusRequest struct {
+	UserID   uint `header:"User-ID"`
+	VerifyID uint `json:"verifyId"`
+	Status   int8 `json:"status"`
+}
+
+type FriendVerifyStatusResponse struct {
 }
 
 type SearchInfo struct {

@@ -143,6 +143,21 @@ type FriendValidResponse {
 	Count int64             `json:"count"`
 }
 
+type FriendVerifyStatusRequest {
+	UserID   uint `header:"User-ID"`
+	VerifyID uint `json:"verifyId"`
+	Status   int8 `json:"status"`
+}
+
+type FriendVerifyStatusResponse {}
+
+type FriendDeleteRequest {
+	UserID   uint `header:"User-ID"`
+	FriendID uint `json:"friendId"`
+}
+
+type FriendDeleteResponse {}
+
 service users {
 	@handler UserInfo
 	get /api/user/user_info (UserInfoRequest) returns (UserInfoResponse) // 用户信息接口\
@@ -170,5 +185,11 @@ service users {
 
 	@handler FriendVerifyList
 	get /api/user/varifyList (FriendValidRequest) returns (FriendValidResponse) // 好友验证
+
+	@handler FriendVerifyStatus
+	put /api/user/verifyStatus (FriendVerifyStatusRequest) returns (FriendVerifyStatusResponse) // 好友验证状态操作
+
+	@handler FriendDelete
+	delete /api/user/friend_delete (FriendDeleteRequest) returns (FriendDeleteResponse) //删除好友
 } // goctl api go -api user_api.api -dir . --home ../../template
 
