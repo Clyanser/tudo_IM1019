@@ -50,3 +50,19 @@ func GetFilePrefix(fileName string) (prefix string) {
 	}
 	return
 }
+
+// Unique 去除切片中的重复元素，保持原始顺序
+// T 必须是可比较的类型（int, string, struct{comparable fields} 等）
+func Unique[T comparable](slice []T) []T {
+	seen := make(map[T]struct{}) // 用 struct{} 节省空间
+	var result []T
+
+	for _, v := range slice {
+		if _, exists := seen[v]; !exists {
+			seen[v] = struct{}{}
+			result = append(result, v)
+		}
+	}
+
+	return result
+}

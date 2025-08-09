@@ -76,7 +76,7 @@ func (l *FriendListLogic) FriendList(req *types.FriendListRequest) (resp *types.
 	//	int(count),
 	//}, nil
 	// 构建查询条件：只查当前用户作为发起方或接收方的记录
-	whereCond := l.svcCtx.DB.Where("send_user_id = ? OR rev_user_id = ?", req.UserID, req.UserID)
+	whereCond := l.svcCtx.DB.Where("send_user_id = ? ", req.UserID)
 
 	// 调用通用分页查询，传入查询条件
 	friends, count, err := list_query.ListQuery(l.svcCtx.DB, user_models.FriendModel{}, list_query.Option{

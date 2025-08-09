@@ -15,7 +15,7 @@ type FriendModel struct {
 }
 
 func (f *FriendModel) IsFriend(db *gorm.DB, a, b uint) bool {
-	err := db.Take(&f, "(send_user_id = ? and rev_user_id = ?) or (rev_user_id = ? and send_user_id = ?)", a, b, b, a).Error
+	err := db.Take(&f, "(send_user_id = ? and rev_user_id = ?) or (send_user_id = ? and rev_user_id = ?)", a, b, b, a).Error
 	if err != nil {
 		return false
 	}
