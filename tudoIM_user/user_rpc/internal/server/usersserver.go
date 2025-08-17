@@ -37,3 +37,13 @@ func (s *UsersServer) UserListInfo(ctx context.Context, in *user_rpc.UserListInf
 	l := logic.NewUserListInfoLogic(ctx, s.svcCtx)
 	return l.UserListInfo(in)
 }
+
+func (s *UsersServer) IsFriend(ctx context.Context, in *user_rpc.IsFriendRequest) (*user_rpc.IsFriendResponse, error) {
+	l := logic.NewIsFriendLogic(ctx, s.svcCtx)
+	return l.IsFriend(in)
+}
+
+func (s *UsersServer) FriendList(ctx context.Context, in *user_rpc.FriendListRequest) (*user_rpc.FriendListResponse, error) {
+	l := logic.NewFriendListLogic(ctx, s.svcCtx)
+	return l.FriendList(in)
+}

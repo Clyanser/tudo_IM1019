@@ -34,3 +34,44 @@ func (l *AuthenticationLogic) Authentication(token string) (resp string, err err
 	return resp, nil
 
 }
+
+// func ListQuery[T any](db *gorm.DB, model T, option Option) (list []T, count int64, err error) {
+//
+//		query := db.Where(model) //把结构体自己的查询条件查了
+//		//模糊匹配
+//		if option.PageInfo.Key != "" && len(option.Preload) > 0 {
+//			likeQuery := db.Where("")
+//			for index, column := range option.likes {
+//				if index == 0 {
+//					likeQuery.Where(fmt.Sprintf("%s like '%%%?%%'", column), option.PageInfo.Key)
+//				} else {
+//					likeQuery.Or(fmt.Sprintf("%s like '%%%?%%'", column), option.PageInfo.Key)
+//				}
+//			}
+//			query.Where(likeQuery)
+//		}
+//
+//		//求总数
+//		query.Model(model).Count(&count)
+//
+//		//preload（预加载） 部分
+//		for _, s := range option.Preload {
+//			query = query.Preload(s)
+//		}
+//
+//		//分页查询
+//		if option.PageInfo.Page <= 0 {
+//			option.PageInfo.Page = 1
+//		}
+//		if option.PageInfo.Limit <= 0 {
+//			option.PageInfo.Limit = 10
+//		}
+//
+//		offset := option.PageInfo.Limit * (option.PageInfo.Page - 1)
+//
+//		err = query.Limit(option.PageInfo.Limit).Offset(offset).Find(&list).Error
+//		if err != nil {
+//			return
+//		}
+//		return
+//	}

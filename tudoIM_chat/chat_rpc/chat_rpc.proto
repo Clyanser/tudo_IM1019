@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package user_rpc;
+option go_package = "./chat_rpc";
+
+message UserChatRequest {
+  uint32 send_user_id = 1; // 发送方用户id
+  uint32 rev_user_id = 2; // 接收方用户id
+  bytes msg = 3; // 消息体 对应的 Msg类型  MsgType 在msg里面有备份 MsgPreview 是通过msg算出来的
+  bytes system_msg = 4; //系统消息
+}
+
+message UserChatResponse {
+}
+
+service Chat {
+  rpc UserChat(UserChatRequest) returns(UserChatResponse); // 用户对话
+}
+
+
+// goctl rpc protoc chat_rpc.proto --go_out=./types --go-grpc_out=./types --zrpc_out=.

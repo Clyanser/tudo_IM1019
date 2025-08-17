@@ -3,10 +3,19 @@
 
 package types
 
+type ChatDeleteHistoryRequest struct {
+	UserID uint   `header:"User-ID"`
+	IdList []uint `json:"idList"`
+}
+
+type ChatDeleteHistoryResponse struct {
+}
+
 type ChatHistoryRequest struct {
-	UserID uint `header:"User-ID"`
-	Page   int  `form:"page"`
-	Limit  int  `form:"limit"`
+	UserID   uint `header:"User-ID"`
+	Page     int  `form:"page,optional"`
+	Limit    int  `form:"limit,optional"`
+	FriendID uint `form:"friendId"`
 }
 
 type ChatHistoryResponse struct {
@@ -15,4 +24,40 @@ type ChatHistoryResponse struct {
 	Avatar    string `json:"avatar"`
 	Nickname  string `json:"nickname"`
 	CreatedAt string `json:"createdAt"`
+}
+
+type ChatRequest struct {
+	UserID uint `header:"User-ID"`
+}
+
+type ChatResponse struct {
+}
+
+type ChatSession struct {
+	UserID     uint   `json:"userId"`
+	Avatar     string `json:"avatar"`
+	Nickname   string `json:"nickname"`
+	CreatedAt  string `json:"created_at"` // 消息时间
+	MsgPreview string `json:"msgPreview"` // 消息预览
+	IsTop      bool   `json:"isTop"`
+}
+
+type ChatSessionRequest struct {
+	UserID uint `header:"User-ID"`
+	Page   int  `form:"page,optional"`
+	Limit  int  `form:"limit,optional"`
+	Key    int  `form:"key,optional"`
+}
+
+type ChatSessionResponse struct {
+	List  []ChatSession `json:"list"`
+	Count int64         `json:"count"`
+}
+
+type UserTopRequest struct {
+	UserID   uint `header:"User-ID"`
+	FriendID uint `json:"friendId"` // 好友ID
+}
+
+type UserTopResponse struct {
 }

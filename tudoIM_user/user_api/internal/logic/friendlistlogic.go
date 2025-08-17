@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"strconv"
 	"tudo_IM1019/common/list_query"
 	"tudo_IM1019/common/models"
 	"tudo_IM1019/tudoIM_user/user_models"
@@ -91,48 +92,56 @@ func (l *FriendListLogic) FriendList(req *types.FriendListRequest) (resp *types.
 		return nil, err
 	}
 
+	//查哪些用户在线
+	onlineMap := l.svcCtx.RDB.HGetAll("online").Val()
+	var onlineUserMap = map[uint]bool{}
+	for key, _ := range onlineMap {
+		val, err1 := strconv.Atoi(key)
+		if err1 != nil {
+			logx.Error(err)
+			continue
+		}
+		onlineUserMap[uint(val)] = true
+	}
+
 	// 用于去重：记录已添加的好友 userID
 	seen := make(map[uint]bool)
 	var list []types.FriendInfoResponse
 
 	for _, friend := range friends {
 		var info types.FriendInfoResponse
-		var friendUserID uint
-		var nickname, abstract, avatar, notice string
 
 		// 判断当前用户是发起方还是接收方
 		if friend.SendUserID == req.UserID {
 			// 我是发起方：对方是 rev_user
-			friendUserID = friend.RevUserID
-			nickname = friend.RevUserModel.Nickname
-			abstract = friend.RevUserModel.Abstract
-			avatar = friend.RevUserModel.Avatar
-			notice = friend.Notice // 我对他的备注
+			info = types.FriendInfoResponse{
+				UserID:   friend.RevUserID,
+				Nickname: friend.RevUserModel.Nickname,
+				Abstract: friend.RevUserModel.Abstract,
+				Avatar:   friend.RevUserModel.Avatar,
+				Notice:   friend.Notice, // 我对他的备注
+				IsOnline: onlineUserMap[friend.RevUserID],
+			}
 		} else if friend.RevUserID == req.UserID {
 			// 我是接收方：对方是 send_user
-			friendUserID = friend.SendUserID
-			nickname = friend.SendUserModel.Nickname
-			abstract = friend.SendUserModel.Abstract
-			avatar = friend.SendUserModel.Avatar
-			notice = friend.Notice // 注意：仍然是这条记录的 Notice（我对他的备注）
+			info = types.FriendInfoResponse{
+				UserID:   friend.SendUserID,
+				Nickname: friend.SendUserModel.Nickname,
+				Abstract: friend.SendUserModel.Abstract,
+				Avatar:   friend.SendUserModel.Avatar,
+				Notice:   friend.Notice, // 注意：仍然是这条记录的 Notice（我对他的备注）
+				IsOnline: onlineUserMap[friend.SendUserID],
+			}
 		} else {
 			// 安全兜底：跳过不相关的记录（理论上不会走到这里）
 			continue
 		}
 
 		// 跳过重复好友
-		if seen[friendUserID] {
+		if seen[info.UserID] {
 			continue
 		}
-		seen[friendUserID] = true
-
-		info = types.FriendInfoResponse{
-			UserID:   friendUserID,
-			Nickname: nickname,
-			Abstract: abstract,
-			Avatar:   avatar,
-			Notice:   notice,
-		}
+		seen[info.UserID] = true
 
 		list = append(list, info)
 	}

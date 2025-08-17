@@ -19,3 +19,5 @@ Services:
   user: user_api
   chat: chat_api
   group: group_api
+  file: file_api
+  settings: settings_api

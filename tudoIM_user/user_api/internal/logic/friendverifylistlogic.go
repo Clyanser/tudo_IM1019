@@ -47,7 +47,12 @@ func (l *FriendVerifyListLogic) FriendVerifyList(req *types.FriendValidRequest) 
 			info.UserID = fv.RevUserID
 			info.Nickname = fv.RevUserModel.Nickname
 			info.Avatar = fv.RevUserModel.Avatar
-			info.Verification = fv.RevUserModel.UserConfModel.FriendVerification
+			// ✅ 安全访问 UserConfModel
+			if fv.RevUserModel.UserConfModel != nil {
+				info.Verification = fv.RevUserModel.UserConfModel.FriendVerification
+			} else {
+				info.Verification = 0 // 或设置默认值，如 1 表示“需要验证”
+			}
 			info.Status = fv.Status
 			info.Flag = "send"
 
@@ -57,7 +62,12 @@ func (l *FriendVerifyListLogic) FriendVerifyList(req *types.FriendValidRequest) 
 			info.UserID = fv.SendUserID
 			info.Nickname = fv.SendUserModel.Nickname
 			info.Avatar = fv.SendUserModel.Avatar
-			info.Verification = fv.SendUserModel.UserConfModel.FriendVerification
+			// ✅ 安全访问 UserConfModel
+			if fv.SendUserModel.UserConfModel != nil {
+				info.Verification = fv.SendUserModel.UserConfModel.FriendVerification
+			} else {
+				info.Verification = 0 // 默认值
+			}
 			info.Status = fv.Status
 			info.Flag = "rev"
 		}

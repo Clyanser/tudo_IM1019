@@ -21,6 +21,7 @@ func (c SystemMsg) Value() (driver.Value, error) {
 type Msg struct {
 	Type        int          `json:"type"`
 	Content     *string      `json:"content"`
+	TextMsg     *TextMsg     `json:"text_msg"`
 	ImageMsg    *ImageMsg    `json:"image_msg"`
 	VideoMsg    *VideoMsg    `json:"video_msg"`
 	FileMsg     *FileMsg     `json:"file_msg"`
@@ -41,6 +42,9 @@ func (c Msg) Value() (driver.Value, error) {
 	return string(b), err
 }
 
+type TextMsg struct {
+	Content string `json:"content"`
+}
 type ImageMsg struct {
 	Title string `gorm:"size:256" json:"title"`
 	Url   string `gorm:"size:256" json:"url"`

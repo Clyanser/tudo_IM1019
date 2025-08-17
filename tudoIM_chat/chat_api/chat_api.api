@@ -1,9 +1,10 @@
 syntax = "v1"
 
 type ChatHistoryRequest {
-	UserID uint `header:"User-ID"`
-	Page   int  `form:"page"`
-	Limit  int  `form:"limit"`
+	UserID   uint `header:"User-ID"`
+	Page     int  `form:"page,optional"`
+	Limit    int  `form:"limit,optional"`
+	FriendID uint `form:"friendId"`
 }
 
 type ChatHistoryResponse {
@@ -14,8 +15,61 @@ type ChatHistoryResponse {
 	CreatedAt string `json:"createdAt"`
 }
 
+type ChatSessionRequest {
+	UserID uint `header:"User-ID"`
+	Page   int  `form:"page,optional"`
+	Limit  int  `form:"limit,optional"`
+	Key    int  `form:"key,optional"`
+}
+
+type ChatSession {
+	UserID     uint   `json:"userId"`
+	Avatar     string `json:"avatar"`
+	Nickname   string `json:"nickname"`
+	CreatedAt  string `json:"created_at"` // 消息时间
+	MsgPreview string `json:"msgPreview"` // 消息预览
+	IsTop      bool   `json:"isTop"`
+}
+
+type ChatSessionResponse {
+	List  []ChatSession `json:"list"`
+	Count int64         `json:"count"`
+}
+
+type UserTopRequest {
+	UserID   uint `header:"User-ID"`
+	FriendID uint `json:"friendId"` // 好友ID
+}
+
+type UserTopResponse {}
+
+type ChatDeleteHistoryRequest {
+	UserID uint   `header:"User-ID"`
+	IdList []uint `json:"idList"`
+}
+
+type ChatDeleteHistoryResponse {}
+
+type ChatRequest {
+	UserID uint `header:"User-ID"`
+}
+
+type ChatResponse {}
+
 service chats {
 	@handler chatHistory
 	get /api/chat/history (ChatHistoryRequest) returns (ChatHistoryResponse) //聊天记录
+
+	@handler chatSession
+	get /api/chat/session (ChatSessionRequest) returns (ChatSessionResponse) //最近会话列表
+
+	@handler userTop
+	post /api/chat/userTop (UserTopRequest) returns (UserTopResponse) //最近会话列表
+
+	@handler chatDeleteHistory
+	delete /api/chat/deleteHistory (ChatDeleteHistoryRequest) returns (ChatDeleteHistoryResponse) //删除聊天记录
+
+	@handler chatHandler
+	get /api/chat/ws/chat (ChatRequest) returns (ChatResponse) //ws的对话
 } // goctl api go -api chat_api.api -dir . --home ../../template
 

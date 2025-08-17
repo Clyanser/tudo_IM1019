@@ -2,7 +2,11 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"tudo_IM1019/common/models/ctype"
+	"tudo_IM1019/tudoIM_chat/chat_rpc/chat"
 	"tudo_IM1019/tudoIM_user/user_models"
 
 	"tudo_IM1019/tudoIM_user/user_api/internal/svc"
@@ -44,6 +48,30 @@ func (l *FriendVerifyStatusLogic) FriendVerifyStatus(req *types.FriendVerifyStat
 			SendUserID: friendVerify.SendUserID,
 			RevUserID:  friendVerify.RevUserID,
 		})
+
+		//给对方发一个消息
+		msg := ctype.Msg{
+			Type: 1,
+			TextMsg: &ctype.TextMsg{
+				Content: "我们已经是好友了,开始聊天吧",
+			},
+		}
+		byteData, err := json.Marshal(msg)
+		if err != nil {
+			logx.Errorf("JSON marshal failed: %v", err) // 打印错误信息
+			return nil, fmt.Errorf("无法序列化消息: %v", err)
+		}
+		logx.Infof("Serialized message: %s", string(byteData)) // 打印序列化后的消息
+
+		_, err = l.svcCtx.ChatRpc.UserChat(context.Background(), &chat.UserChatRequest{
+			SendUserId: uint32(req.UserID),
+			RevUserId:  uint32(friendVerify.SendUserID),
+			Msg:        byteData,
+			SystemMsg:  nil,
+		})
+		if err != nil {
+			return nil, err
+		}
 	case 2: // 拒绝
 		friendVerify.Status = 2
 	case 3: // 忽略

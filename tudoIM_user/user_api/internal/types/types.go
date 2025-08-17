@@ -33,6 +33,7 @@ type FriendInfoResponse struct {
 	Abstract string `json:"abstract"`
 	Avatar   string `json:"avatar"`
 	Notice   string `json:"notice"`
+	IsOnline bool   `json:"isOnline"`
 }
 
 type FriendListRequest struct {

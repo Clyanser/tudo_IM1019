@@ -51,13 +51,26 @@ type ChatHistoryResponse struct {
 }
 
 func (l *ChatHistoryLogic) ChatHistory(req *types.ChatHistoryRequest) (resp *ChatHistoryResponse, err error) {
+	//是否是好友
+	res, err := l.svcCtx.UserRpc.IsFriend(context.Background(), &user_rpc.IsFriendRequest{
+		User1: uint32(req.UserID),
+		User2: uint32(req.FriendID),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !res.IsFriend {
+		return nil, errors.New("你们还不是好友~")
+	}
+
 	chatList, count, _ := list_query.ListQuery(l.svcCtx.DB, chat_models.ChatModel{}, list_query.Option{
 		PageInfo: models.PageInfo{
 			Page:  req.Page,
 			Limit: req.Limit,
 			Sort:  "created_at desc", //按照时间降序
 		},
-		Where: l.svcCtx.DB.Where("send_user_id = ? or rev_user_id = ?", req.UserID, req.UserID),
+		Debug: true, //方便调试与问题定位
+		Where: l.svcCtx.DB.Where("((send_user_id = ? and rev_user_id = ?) or (send_user_id = ? and rev_user_id = ?)) and id not in (select chat_id from user_chat_delete_models where user_id = ?)", req.UserID, req.FriendID, req.FriendID, req.UserID, req.UserID),
 	})
 	var userIDList []uint32
 	for _, model := range chatList {
