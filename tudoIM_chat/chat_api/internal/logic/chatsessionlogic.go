@@ -52,7 +52,7 @@ func (l *ChatSessionLogic) ChatSession(req *types.ChatSessionRequest) (resp *typ
 		limit 10 offset 0;
 	*/
 
-	column := fmt.Sprintf("if (( select 1 from top_user_models where user_id = %d and (top_user_id = sU or top_user_id = rU)),1,0) as isTop", req.UserID)
+	column := fmt.Sprintf("if (( select 1 from top_user_models where user_id = %d and (top_user_id = sU or top_user_id = rU) limit 1),1,0) as isTop", req.UserID)
 
 	chatList, count, _ := list_query.ListQuery(l.svcCtx.DB, Data{}, list_query.Option{
 		PageInfo: models.PageInfo{
@@ -80,6 +80,10 @@ func (l *ChatSessionLogic) ChatSession(req *types.ChatSessionRequest) (resp *typ
 		if data.SU != req.UserID {
 			userIDList = append(userIDList, uint32(data.SU))
 		}
+		if data.SU == req.UserID && data.RU == req.UserID {
+			//	自己与自己聊天
+
+		}
 	}
 	response, err := l.svcCtx.UserRpc.UserListInfo(context.Background(), &user_rpc.UserListInfoRequest{
 		UserIdList: userIDList,
@@ -105,7 +109,11 @@ func (l *ChatSessionLogic) ChatSession(req *types.ChatSessionRequest) (resp *typ
 			s.Avatar = response.UserInfo[uint32(s.UserID)].Avatar
 			s.Nickname = response.UserInfo[uint32(s.UserID)].NickName
 		}
-
+		if data.SU == req.UserID && data.RU == req.UserID { //自己与自己聊天
+			s.UserID = data.SU
+			s.Avatar = response.UserInfo[uint32(s.UserID)].Avatar
+			s.Nickname = response.UserInfo[uint32(s.UserID)].NickName
+		}
 		list = append(list, s)
 	}
 

@@ -6,7 +6,12 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/zeromicro/go-zero/core/logx"
+	"gorm.io/gorm"
 	"net/http"
+	"sync"
+	"time"
+	"tudo_IM1019/common/models/ctype"
+	"tudo_IM1019/tudoIM_chat/chat_models"
 	"tudo_IM1019/tudoIM_user/user_models"
 	"tudo_IM1019/tudoIM_user/user_rpc/types/user_rpc"
 
@@ -23,6 +28,7 @@ type UserWsInfo struct {
 }
 
 var UserWsMap = map[uint]UserWsInfo{}
+var userWsMapMutex sync.RWMutex // 读写锁
 
 func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +37,7 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			response.Response(r, w, nil, err)
 			return
 		}
-		//logx.Infof("【连接开始】用户 %d 正在建立 WebSocket 连接，当前 UserWsMap 状态: %v", req.UserID, UserWsMap)
+		logx.Infof("【连接开始】用户 %d 正在建立 WebSocket 连接，当前 UserWsMap 状态: %v", req.UserID, UserWsMap)
 		//ws 升级
 		var upGrader = websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
@@ -48,7 +54,10 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 		defer func() {
 			_ = conn.Close() //连接对象断开
+			//
+			userWsMapMutex.Lock()
 			delete(UserWsMap, req.UserID)
+			userWsMapMutex.Unlock()
 			svcCtx.RDB.HDel("online", fmt.Sprintf("%d", req.UserID))
 		}()
 		//调用户服务，获取当前用户信息
@@ -79,11 +88,16 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		if exists {
 			logx.Infof("用户 %d 重复连接，关闭旧连接", req.UserID)
 			_ = oldConn.Conn.Close()
+			//加锁删除
+			userWsMapMutex.Lock()
 			delete(UserWsMap, req.UserID)
+			userWsMapMutex.Unlock()
 		}
-
+		//设置新连接
+		userWsMapMutex.Lock()
 		UserWsMap[req.UserID] = userWsInfo
-		//logx.Infof("【连接建立】用户 %d 已存入 UserWsMap", req.UserID)
+		userWsMapMutex.Unlock()
+		logx.Infof("【连接建立】用户 %d 已存入 UserWsMap", req.UserID)
 		//把在线的用户存进公共的地方（redis）
 		svcCtx.RDB.HSet("online", fmt.Sprintf("%d", req.UserID), req.UserID)
 		//遍历当前在线的好友，在线的就给他发信息（我已上线）
@@ -104,6 +118,8 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			response.Response(r, w, nil, err)
 			return
 		}
+		//读操作上锁
+		userWsMapMutex.RLock()
 		for _, v := range list.FriendList {
 			friend, ok := UserWsMap[uint(v.UserId)]
 			if ok {
@@ -120,18 +136,126 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 				}
 			}
 		}
+		userWsMapMutex.RUnlock()
 		//}
 		for {
 			//消息类型，消息，错误
-			_, p, err := conn.ReadMessage()
-			if err != nil {
+			_, p, err1 := conn.ReadMessage()
+			if err1 != nil {
 				//用户断开聊天
 				fmt.Println(err)
 				break
 			}
-			fmt.Println(string(p), req.UserID)
-			//发送消息
-			conn.WriteMessage(websocket.TextMessage, []byte("xxx"))
+			var request chatRequest
+			err2 := json.Unmarshal(p, &request)
+			if err2 != nil {
+				//用户乱发消息
+				logx.Error(err2)
+				SendTipErrMsg(conn, "参数解析失败")
+				continue
+			}
+			if request.RevUserID != req.UserID { //实现自己能跟自己聊天
+				// 判断是否是你的好友
+				isFriendRes, err := svcCtx.UserRpc.IsFriend(context.Background(), &user_rpc.IsFriendRequest{
+					User1: uint32(req.UserID),
+					User2: uint32(request.RevUserID),
+				})
+				if err != nil {
+					logx.Error(err)
+					SendTipErrMsg(conn, "网络错误")
+					continue
+				}
+				if !isFriendRes.IsFriend {
+					SendTipErrMsg(conn, "你们还不是好友")
+					continue
+				}
+			}
+			//先入库
+			InsertMsgByChat(svcCtx.DB, request.RevUserID, req.UserID, request.Msg)
+			//看看目标用户在不在线
+			SendMsgByUser(request.RevUserID, req.UserID, request.Msg)
 		}
 	}
+}
+
+type chatRequest struct {
+	RevUserID uint      `json:"rev_user_id"`
+	Msg       ctype.Msg `json:"msg"`
+}
+
+type chatResponse struct {
+	RevUser  ctype.UserInfo `json:"revUser"`
+	SendUser ctype.UserInfo `json:"sendUser"`
+	Msg      ctype.Msg      `json:"msg"`
+	CreateAt time.Time      `json:"createAt"`
+}
+
+func InsertMsgByChat(db *gorm.DB, revUserID uint, sendUserID uint, msg ctype.Msg) {
+	chatModel := chat_models.ChatModel{
+		RevUserID:  revUserID,
+		SendUserID: sendUserID,
+		MsgType:    msg.Type,
+		Msg:        msg,
+	}
+	chatModel.MsgPreview = chatModel.MsgPreviewMethod()
+	err := db.Create(&chatModel).Error
+	if err != nil {
+		logx.Error(err)
+		//上锁
+		userWsMapMutex.RLock()
+		sendUser, ok := UserWsMap[sendUserID]
+		userWsMapMutex.RUnlock()
+		if !ok {
+			return
+		}
+		SendTipErrMsg(sendUser.Conn, "超过发送限制！")
+	}
+}
+
+// SendTipErrMsg 发送错误提示消息
+func SendTipErrMsg(conn *websocket.Conn, msg string) {
+	resp := chatResponse{
+		Msg: ctype.Msg{
+			Type: ctype.TipMsgType,
+			TipMsg: &ctype.TipMsg{
+				Status:  "error",
+				Content: msg,
+			},
+		},
+		CreateAt: time.Now(),
+	}
+	bytes, _ := json.Marshal(resp)
+	_ = conn.WriteMessage(websocket.TextMessage, bytes)
+}
+
+// SendMsgByUser 发给谁 谁发的 消息
+func SendMsgByUser(revUserID uint, sendUserID uint, msg ctype.Msg) {
+	//上锁
+	userWsMapMutex.RLock()
+	defer userWsMapMutex.RUnlock()
+
+	revUser, ok := UserWsMap[revUserID]
+	if !ok {
+		return
+	}
+	sendUser, ok := UserWsMap[sendUserID]
+	if !ok {
+		return
+	}
+	resp := chatResponse{
+		RevUser: ctype.UserInfo{
+			ID:       revUserID,
+			NickName: revUser.UserInfo.Nickname,
+			Avatar:   revUser.UserInfo.Avatar,
+		},
+		SendUser: ctype.UserInfo{
+			ID:       sendUserID,
+			NickName: sendUser.UserInfo.Nickname,
+			Avatar:   sendUser.UserInfo.Avatar,
+		},
+		Msg:      msg,
+		CreateAt: time.Now(),
+	}
+	bytdate, _ := json.Marshal(resp)
+	revUser.Conn.WriteMessage(websocket.TextMessage, bytdate)
 }

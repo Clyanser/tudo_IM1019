@@ -6,6 +6,23 @@ import (
 	"time"
 )
 
+type MsgType int8
+
+const (
+	TextMsgType MsgType = iota + 1
+	ImageMsgType
+	VideoMsgType
+	FileMsgType
+	VoiceMsgType
+	VoiceTelMsgType
+	VideoTelMsgType
+	RecallMsgType
+	ReplyMsgType
+	QuoteMsgType
+	AtMsgType
+	TipMsgType
+)
+
 type SystemMsg struct {
 	Type int8 `json:"type"` //违规类型 1：涉黄 2：涉政 3：不正当言论
 }
@@ -19,7 +36,7 @@ func (c SystemMsg) Value() (driver.Value, error) {
 }
 
 type Msg struct {
-	Type        int          `json:"type"`
+	Type        MsgType      `json:"type"`
 	Content     *string      `json:"content"`
 	TextMsg     *TextMsg     `json:"text_msg"`
 	ImageMsg    *ImageMsg    `json:"image_msg"`
@@ -31,7 +48,8 @@ type Msg struct {
 	RecallMsg   *RecallMsg   `json:"recall_msg"`
 	ReplyMsg    *ReplyMsg    `json:"reply_msg"`
 	QuoteMsg    *QuoteMsg    `json:"quote_msg"`
-	AtMsg       *AtMsg       `json:"at_msg"` //@消息（群聊才有）
+	AtMsg       *AtMsg       `json:"at_msg"`  //@消息（群聊才有）
+	TipMsg      *TipMsg      `json:"tip_msg"` //一般是不入库的
 }
 
 func (c *Msg) Scan(value interface{}) error {
@@ -93,4 +111,8 @@ type AtMsg struct {
 	UserId     uint   `json:"user_id"`
 	Content    string `gorm:"size:256" json:"content"`
 	MsgContent *Msg   `json:"msg_content"`
+}
+type TipMsg struct {
+	Status  string `gorm:"size:32" json:"status"` //error warning success info
+	Content string `gorm:"size:256" json:"content"`
 }

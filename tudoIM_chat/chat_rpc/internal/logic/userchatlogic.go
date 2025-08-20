@@ -44,7 +44,7 @@ func (l *UserChatLogic) UserChat(in *chat_rpc.UserChatRequest) (*chat_rpc.UserCh
 	chat := chat_models.ChatModel{
 		SendUserID: uint(in.SendUserId),
 		RevUserID:  uint(in.RevUserId),
-		MsgType:    int8(msg.Type),
+		MsgType:    msg.Type,
 		Msg:        msg,
 		SystemMsg:  systemMsg,
 	}

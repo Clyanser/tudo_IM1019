@@ -10,6 +10,12 @@ Log:
 
 Etcd: 127.0.0.1:2379
 
+UserRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    key: userrpc.rpc
+
 FileSize: 0.5 #单位是MB
 
 WhiteList:
@@ -24,3 +30,8 @@ WhiteList:
   - webp
   - WEBP
 UploadDir: uploads
+BlackList:
+  - exe
+  - EXE
+  - php
+  - PHP
