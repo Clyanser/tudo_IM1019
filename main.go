@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"tudo_IM1019/core"
 	"tudo_IM1019/tudoIM_chat/chat_models"
+	"tudo_IM1019/tudoIM_file/file_models"
 	"tudo_IM1019/tudoIM_group/group_models"
 	"tudo_IM1019/tudoIM_user/user_models"
 )
@@ -33,6 +34,7 @@ func main() {
 			&group_models.GroupMemberModel{},   // 群成员表
 			&group_models.GroupMsgModel{},      // 群消息表
 			&group_models.GroupVerifyModel{},   // 群验证表
+			&file_models.FileModel{},           //文件表
 		)
 		if err != nil {
 			fmt.Println("表结构生成失败", err)
