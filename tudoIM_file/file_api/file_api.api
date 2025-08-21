@@ -1,14 +1,11 @@
 syntax = "v1"
 
-type ImageRequest {}
+type ImageRequest {
+	UserID uint `header:"User-ID"`
+}
 
 type ImageResponse {
 	Url string `json:"url"`
-}
-
-type ImageShowRequest {
-	ImageType string `path:"imageType"`
-	ImageName string `path:"imageName"`
 }
 
 type FileRequest {
@@ -19,6 +16,12 @@ type FileResponse {
 	Src string `json:"src"`
 }
 
+type ImageShowRequest {
+	ImageName string `path:"imageName"`
+}
+
+type ImageShowResponse {}
+
 service file {
 	@handler Image
 	post /api/file/image (ImageRequest) returns (ImageResponse) //图片上传
@@ -27,6 +30,6 @@ service file {
 	post /api/file/file (FileRequest) returns (FileResponse) //文件上传
 
 	@handler ImageShow
-	get /api/file/uploads/:imageType/:imageName (ImageShowRequest)
+	get /api/file/:imageName (ImageShowRequest) returns (ImageShowResponse) //文件预览
 } //goctl api go -api file_api.api -dir . --home ../../template
 

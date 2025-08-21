@@ -3,18 +3,19 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/rest/httpx"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"strings"
-	"tudo_IM1019/utils"
-	"tudo_IM1019/utils/random"
-
-	"github.com/zeromicro/go-zero/rest/httpx"
 	"tudo_IM1019/tudoIM_file/file_api/internal/logic"
 	"tudo_IM1019/tudoIM_file/file_api/internal/svc"
 	"tudo_IM1019/tudoIM_file/file_api/internal/types"
+	"tudo_IM1019/tudoIM_file/file_models"
+	"tudo_IM1019/utils"
 
 	"tudo_IM1019/common/response"
 )
@@ -58,54 +59,57 @@ func ImageHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			response.Response(r, w, nil, errors.New("图片非法~"))
 			return
 		}
-		//文件重名
-		//在文件保存之前，先去读文件列表，对比两图片的hash 若一样则直接使用原存在的图片不做写操作 若不一样就把最新的这个重命名以下 {old_name}_xxxx.{suffix}
+		//先去算hash
+		imageData, _ := io.ReadAll(file)
+		imageHash := utils.MD5(imageData)
+		l := logic.NewImageLogic(r.Context(), svcCtx)
+		resp, err := l.Image(&req)
+		if err != nil {
+			response.Response(r, w, nil, err)
+		}
+		var fileModel file_models.FileModel
+		err = svcCtx.DB.Take(&fileModel, "hash = ?", imageHash).Error
+		if err == nil {
+			//找到了，返回之前的那个文件的hash
+			resp.Url = fileModel.WebPath()
+			logx.Infof("文件 %s Hash重复", fileHead.Filename)
+			response.Response(r, w, nil, err)
+			return
+		}
+
+		//拼路径 /uploads/imageType/{uuid}.{后缀 }
 		dirPath := path.Join(svcCtx.Config.UploadDir, imageType)
-		dir, err := os.ReadDir(dirPath)
+		_, err = os.ReadDir(dirPath)
 		if err != nil {
 			err := os.MkdirAll(dirPath, 0666)
 			if err != nil {
 				return
 			}
 		}
-		filePath := path.Join(svcCtx.Config.UploadDir, imageType, fileHead.Filename)
-		imageData, err := io.ReadAll(file)
 		fileName := fileHead.Filename
-		if err != nil {
-			response.Response(r, w, nil, err)
+		newFileModel := file_models.FileModel{
+			UserID:   req.UserID,
+			FileName: fileName,
+			Size:     fileHead.Size,
+			Hash:     utils.MD5(imageData),
+			FileUid:  uuid.New(),
 		}
+		newFileModel.Path = path.Join(dirPath, fmt.Sprintf("%s.%s", newFileModel.FileUid, suffix))
 
-		l := logic.NewImageLogic(r.Context(), svcCtx)
-		resp, err := l.Image(&req)
-		resp.Url = "/" + filePath
-
-		if InDir(dir, fileHead.Filename) {
-			//重名了
-
-			//先读之前的文件
-			byteData, _ := os.ReadFile(filePath)
-			oleFileHash := utils.MD5(byteData)
-			newFileHash := utils.MD5(imageData)
-			if newFileHash == oleFileHash {
-				//两个文件是一样的
-				fmt.Println("each both same file hash")
-				response.Response(r, w, resp, nil)
-				return
-			}
-			//两个文件是不一样的
-			//改名操作
-			var prefix = utils.GetFilePrefix(fileName)
-			newPath := fmt.Sprintf("%s_%s.%s", prefix, random.RandStr(4), suffix)
-			filePath = path.Join(svcCtx.Config.UploadDir, imageType, newPath)
-
-		}
-
-		err = os.WriteFile(filePath, imageData, 0666)
+		err = os.WriteFile(newFileModel.Path, imageData, 0666)
 		if err != nil {
 			response.Response(r, w, nil, err)
 			return
 		}
-		resp.Url = "/" + filePath
+
+		//文件信息入库
+		err = svcCtx.DB.Create(&newFileModel).Error
+		if err != nil {
+			logx.Error(err)
+			response.Response(r, w, resp, err)
+			return
+		}
+		resp.Url = newFileModel.WebPath()
 		response.Response(r, w, resp, err)
 	}
 }

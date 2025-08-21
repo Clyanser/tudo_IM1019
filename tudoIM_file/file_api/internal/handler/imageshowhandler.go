@@ -1,9 +1,10 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"os"
-	"path"
+	"tudo_IM1019/tudoIM_file/file_models"
 
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"tudo_IM1019/tudoIM_file/file_api/internal/svc"
@@ -19,8 +20,13 @@ func ImageShowHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			response.Response(r, w, nil, err)
 			return
 		}
-		filePath := path.Join("uploads", req.ImageType, req.ImageName)
-		bytedata, err := os.ReadFile(filePath)
+		var fileModel file_models.FileModel
+		err := svcCtx.DB.Take(&fileModel, "file_uid = ? ", req.ImageName).Error
+		if err != nil {
+			response.Response(r, w, nil, errors.New("文件不存在"))
+			return
+		}
+		bytedata, err := os.ReadFile(fileModel.Path)
 		if err != nil {
 			response.Response(r, w, nil, err)
 			return

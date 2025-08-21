@@ -12,6 +12,7 @@ type FileResponse struct {
 }
 
 type ImageRequest struct {
+	UserID uint `header:"User-ID"`
 }
 
 type ImageResponse struct {
@@ -19,6 +20,8 @@ type ImageResponse struct {
 }
 
 type ImageShowRequest struct {
-	ImageType string `path:"imageType"`
 	ImageName string `path:"imageName"`
+}
+
+type ImageShowResponse struct {
 }

@@ -13,4 +13,7 @@ type Config struct {
 	BlackList []string
 	UploadDir string
 	UserRpc   zrpc.RpcClientConf
+	Mysql     struct {
+		Dsn string
+	}
 }
