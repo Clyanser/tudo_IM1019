@@ -8,10 +8,12 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 	"tudo_IM1019/common/models/ctype"
 	"tudo_IM1019/tudoIM_chat/chat_models"
+	"tudo_IM1019/tudoIM_file/file_rpc/types/file_rpc"
 	"tudo_IM1019/tudoIM_user/user_models"
 	"tudo_IM1019/tudoIM_user/user_rpc/types/user_rpc"
 
@@ -170,6 +172,33 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 					continue
 				}
 			}
+			//判断是否是文件类型
+			switch request.Msg.Type {
+			case ctype.FileMsgType:
+				nameList := strings.Split(request.Msg.FileMsg.Url, "/")
+				var uuid string
+				if len(nameList) == 0 {
+					SendTipErrMsg(conn, "请上传文件")
+					continue
+				}
+				fmt.Println(nameList)
+				uuid = nameList[len(nameList)-1]
+				fmt.Println(uuid)
+				//	是文件类型，请求文件rpc服务
+				fileResponse, err3 := svcCtx.FileRpc.FileInfo(context.Background(), &file_rpc.FileInfoRequest{
+					FileId: uuid,
+				})
+				if err3 != nil {
+					logx.Error(err3)
+					SendTipErrMsg(conn, err3.Error())
+					continue
+				}
+				request.Msg.FileMsg.Title = fileResponse.FileName
+				request.Msg.FileMsg.Type = fileResponse.FileType
+				request.Msg.FileMsg.Size = fileResponse.FileSize
+			default:
+			}
+
 			//先入库
 			InsertMsgByChat(svcCtx.DB, request.RevUserID, req.UserID, request.Msg)
 			//看看目标用户在不在线

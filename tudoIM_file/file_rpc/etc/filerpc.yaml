@@ -1,10 +1,9 @@
-Name: userrpc.rpc
-ListenOn: 0.0.0.0:30021
+Name: filerpc.rpc
+ListenOn: 0.0.0.0:30023
 Etcd:
   Hosts:
   - 127.0.0.1:2379
-  Key: userrpc.rpc
-
+  Key: filerpc.rpc
 Mysql:
   Dsn: root:123123@tcp(127.0.0.1:3306)/tudo_im?charset=utf8mb4&parseTime=True&loc=Local
 
