@@ -29,7 +29,7 @@ type UserWsInfo struct {
 	Conn     *websocket.Conn       //用户的ws 连接对象
 }
 
-var UserWsMap = map[uint]UserWsInfo{}
+var UseOnlineWsMap = map[uint]UserWsInfo{}
 var userWsMapMutex sync.RWMutex // 读写锁
 
 func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
@@ -39,7 +39,7 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			response.Response(r, w, nil, err)
 			return
 		}
-		logx.Infof("【连接开始】用户 %d 正在建立 WebSocket 连接，当前 UserWsMap 状态: %v", req.UserID, UserWsMap)
+		logx.Infof("【连接开始】用户 %d 正在建立 WebSocket 连接，当前 UserWsMap 状态: %v", req.UserID, UseOnlineWsMap)
 		//ws 升级
 		var upGrader = websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
@@ -58,7 +58,7 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			_ = conn.Close() //连接对象断开
 			//
 			userWsMapMutex.Lock()
-			delete(UserWsMap, req.UserID)
+			delete(UseOnlineWsMap, req.UserID)
 			userWsMapMutex.Unlock()
 			svcCtx.RDB.HDel("online", fmt.Sprintf("%d", req.UserID))
 		}()
@@ -86,18 +86,18 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 
 		// 如果该用户已在线，先关闭旧连接
-		oldConn, exists := UserWsMap[req.UserID]
+		oldConn, exists := UseOnlineWsMap[req.UserID]
 		if exists {
 			logx.Infof("用户 %d 重复连接，关闭旧连接", req.UserID)
 			_ = oldConn.Conn.Close()
 			//加锁删除
 			userWsMapMutex.Lock()
-			delete(UserWsMap, req.UserID)
+			delete(UseOnlineWsMap, req.UserID)
 			userWsMapMutex.Unlock()
 		}
 		//设置新连接
 		userWsMapMutex.Lock()
-		UserWsMap[req.UserID] = userWsInfo
+		UseOnlineWsMap[req.UserID] = userWsInfo
 		userWsMapMutex.Unlock()
 		logx.Infof("【连接建立】用户 %d 已存入 UserWsMap", req.UserID)
 		//把在线的用户存进公共的地方（redis）
@@ -123,9 +123,9 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		//读操作上锁
 		userWsMapMutex.RLock()
 		for _, v := range list.FriendList {
-			friend, ok := UserWsMap[uint(v.UserId)]
+			friend, ok := UseOnlineWsMap[uint(v.UserId)]
 			if ok {
-				text := fmt.Sprintf("好友 %s 已经上线", UserWsMap[req.UserID].UserInfo.Nickname)
+				text := fmt.Sprintf("好友 %s 已经上线", UseOnlineWsMap[req.UserID].UserInfo.Nickname)
 				//判断好友是否开启了好友上线提醒
 				if friend.UserInfo.UserConfModel.FriendOnline {
 					//好友上线了
@@ -172,19 +172,34 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 					continue
 				}
 			}
-			//判断是否是文件类型
+			//判断消息类型
 			switch request.Msg.Type {
+			case ctype.TextMsgType:
+				if request.Msg.TextMsg == nil {
+					SendTipErrMsg(conn, "请输入消息内容")
+					continue
+				}
+				if request.Msg.TextMsg.Content == "" {
+					SendTipErrMsg(conn, "请输入消息内容")
+					continue
+				}
+				//判断是否是文件类型
 			case ctype.FileMsgType:
+				if request.Msg.FileMsg == nil {
+					logx.Error("文件消息体为空")
+					return
+				}
+				logx.Infof("原始 File URL: '%s'", request.Msg.FileMsg.Url)
 				nameList := strings.Split(request.Msg.FileMsg.Url, "/")
 				var uuid string
 				if len(nameList) == 0 {
 					SendTipErrMsg(conn, "请上传文件")
 					continue
 				}
-				fmt.Println(nameList)
+				//fmt.Println(nameList)
 				uuid = nameList[len(nameList)-1]
-				fmt.Println(uuid)
-				//	是文件类型，请求文件rpc服务
+				//fmt.Println(uuid) *调试信息*
+				//	是文件类型，请求文件rpc服务 *调试信息*
 				fileResponse, err3 := svcCtx.FileRpc.FileInfo(context.Background(), &file_rpc.FileInfoRequest{
 					FileId: uuid,
 				})
@@ -196,13 +211,107 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 				request.Msg.FileMsg.Title = fileResponse.FileName
 				request.Msg.FileMsg.Type = fileResponse.FileType
 				request.Msg.FileMsg.Size = fileResponse.FileSize
+			case ctype.RecallMsgType:
+				if request.Msg.RecallMsg == nil {
+					logx.Error("撤回消息体为空")
+					continue
+				}
+				//	撤回消息ID必填
+				if request.Msg.RecallMsg.MsgID == 0 {
+					logx.Info("请填写撤回的消息ID")
+					SendTipErrMsg(conn, "撤回失败")
+					continue
+				}
+				//  判断有没有这条消息
+				var msgModel chat_models.ChatModel
+				err = svcCtx.DB.Take(&msgModel, "id = ?", request.Msg.RecallMsg.MsgID).Error
+				if err != nil {
+					logx.Error(err)
+					SendTipErrMsg(conn, "撤回失败")
+					continue
+				}
+				//  判断是不是自己发的
+				if msgModel.SendUserID != req.UserID {
+					//	不是自己发的
+					SendTipErrMsg(conn, "只能撤回自己的消息")
+					continue
+				}
+				//	撤回逻辑
+				//  判断撤回的时间小于发送时间两分钟
+				nowTime := time.Now()
+				validTime := nowTime.Sub(msgModel.CreatedAt)
+				if validTime >= time.Minute*2 {
+					SendTipErrMsg(conn, "撤回失败,已过撤回时间")
+					continue
+				}
+				//收到撤回请求后，服务端把原消息修改为撤回提示消息，并记录原消息
+				//通知前端收发双方刷新聊天记录
+				content := fmt.Sprintf("%s 撤回了一条消息", userInfo.Nickname)
+				if userInfo.UserConfModel.RecallMessage != nil {
+					logx.Info("使用用户自定义的撤回回复")
+					content = *userInfo.UserConfModel.RecallMessage
+				}
+
+				err = svcCtx.DB.Model(&msgModel).Updates(chat_models.ChatModel{
+					Msg: ctype.Msg{
+						Type: ctype.RecallMsgType,
+						RecallMsg: &ctype.RecallMsg{
+							Notice:    content,
+							MsgID:     request.Msg.RecallMsg.MsgID,
+							OriginMsg: &msgModel.Msg,
+						},
+					},
+				}).Error
+				if err != nil {
+					logx.Error(err)
+					continue
+				}
+				//	把原消息置为空
+			case ctype.ReplyMsgType:
+				//	回复消息
+				if request.Msg.ReplyMsg == nil {
+					logx.Error("回复消息体为空")
+					continue
+				}
+				if request.Msg.ReplyMsg.MsgId == 0 {
+					logx.Error("回复的消息id必填")
+					continue
+				}
+				//获取原消息
+				var msgModel chat_models.ChatModel
+				err = svcCtx.DB.Take(&msgModel, request.Msg.ReplyMsg.MsgId).Error
+				if err != nil {
+					logx.Error(err)
+					SendTipErrMsg(conn, "消息发送失败")
+					continue
+				}
+				//获取用户基本信息
+				userBaseInfo, err := svcCtx.UserRpc.UserBaseInfo(context.Background(), &user_rpc.UserBaseInfoRequest{
+					UserId: uint32(msgModel.SendUserID),
+				})
+				if err != nil {
+					logx.Error(err)
+					return
+				}
+				//	构造响应
+				request.Msg.ReplyMsg.MsgContent = &msgModel.Msg
+				request.Msg.ReplyMsg.UserId = msgModel.SendUserID
+				request.Msg.ReplyMsg.UserNickName = userBaseInfo.NickName
+				request.Msg.ReplyMsg.OriginMsgDate = msgModel.CreatedAt
+			case ctype.QuoteMsgType:
+				//	引用消息
+				if request.Msg.QuoteMsg == nil {
+					logx.Error("引用消息体为空")
+					continue
+				}
+
 			default:
 			}
 
 			//先入库
-			InsertMsgByChat(svcCtx.DB, request.RevUserID, req.UserID, request.Msg)
-			//看看目标用户在不在线
-			SendMsgByUser(request.RevUserID, req.UserID, request.Msg)
+			msgID := InsertMsgByChat(svcCtx.DB, request.RevUserID, req.UserID, request.Msg)
+			//看看目标用户在不在线  给发送双方都要发消息
+			SendMsgByUser(svcCtx, request.RevUserID, req.UserID, request.Msg, msgID)
 		}
 	}
 }
@@ -213,13 +322,22 @@ type chatRequest struct {
 }
 
 type chatResponse struct {
+	ID       uint64         `json:"id"`
+	IsMe     bool           `json:"is_me"`
 	RevUser  ctype.UserInfo `json:"revUser"`
 	SendUser ctype.UserInfo `json:"sendUser"`
 	Msg      ctype.Msg      `json:"msg"`
-	CreateAt time.Time      `json:"createAt"`
+	CreateAt time.Time      `json:"created_at"`
 }
 
-func InsertMsgByChat(db *gorm.DB, revUserID uint, sendUserID uint, msg ctype.Msg) {
+func InsertMsgByChat(db *gorm.DB, revUserID uint, sendUserID uint, msg ctype.Msg) (msgID uint64) {
+	switch msg.Type {
+	case ctype.RecallMsgType:
+		fmt.Println("撤回消息不入库")
+		return
+	default:
+
+	}
 	chatModel := chat_models.ChatModel{
 		RevUserID:  revUserID,
 		SendUserID: sendUserID,
@@ -232,13 +350,14 @@ func InsertMsgByChat(db *gorm.DB, revUserID uint, sendUserID uint, msg ctype.Msg
 		logx.Error(err)
 		//上锁
 		userWsMapMutex.RLock()
-		sendUser, ok := UserWsMap[sendUserID]
+		sendUser, ok := UseOnlineWsMap[sendUserID]
 		userWsMapMutex.RUnlock()
 		if !ok {
 			return
 		}
 		SendTipErrMsg(sendUser.Conn, "超过发送限制！")
 	}
+	return chatModel.ID
 }
 
 // SendTipErrMsg 发送错误提示消息
@@ -258,33 +377,83 @@ func SendTipErrMsg(conn *websocket.Conn, msg string) {
 }
 
 // SendMsgByUser 发给谁 谁发的 消息
-func SendMsgByUser(revUserID uint, sendUserID uint, msg ctype.Msg) {
+func SendMsgByUser(svcCtx *svc.ServiceContext, revUserID uint, sendUserID uint, msg ctype.Msg, msgID uint64) {
 	//上锁
 	userWsMapMutex.RLock()
 	defer userWsMapMutex.RUnlock()
 
-	revUser, ok := UserWsMap[revUserID]
-	if !ok {
-		return
-	}
-	sendUser, ok := UserWsMap[sendUserID]
-	if !ok {
-		return
-	}
+	revUser, ok1 := UseOnlineWsMap[revUserID]
+	sendUser, ok2 := UseOnlineWsMap[sendUserID]
 	resp := chatResponse{
-		RevUser: ctype.UserInfo{
-			ID:       revUserID,
-			NickName: revUser.UserInfo.Nickname,
-			Avatar:   revUser.UserInfo.Avatar,
-		},
-		SendUser: ctype.UserInfo{
-			ID:       sendUserID,
-			NickName: sendUser.UserInfo.Nickname,
-			Avatar:   sendUser.UserInfo.Avatar,
-		},
+		ID:       msgID,
 		Msg:      msg,
 		CreateAt: time.Now(),
 	}
-	bytdate, _ := json.Marshal(resp)
-	revUser.Conn.WriteMessage(websocket.TextMessage, bytdate)
+
+	if ok1 && ok2 && sendUserID == revUserID {
+		resp.IsMe = true
+		//自己给自己发消息
+		resp.RevUser = ctype.UserInfo{
+			ID:       revUserID,
+			NickName: revUser.UserInfo.Nickname,
+			Avatar:   revUser.UserInfo.Avatar,
+		}
+		resp.SendUser = ctype.UserInfo{
+			ID:       sendUserID,
+			NickName: sendUser.UserInfo.Nickname,
+			Avatar:   sendUser.UserInfo.Avatar,
+		}
+		bytDate, _ := json.Marshal(resp)
+		err := revUser.Conn.WriteMessage(websocket.TextMessage, bytDate)
+		if err != nil {
+			logx.Error(err)
+			return
+		}
+		return
+	}
+	//不管怎么样，都要给发送者回传消息
+	//如果接收者不在线，那么我就要去拿接收者的用户信息
+
+	// === 给发送者回传消息 ===
+	if ok2 {
+		resp.IsMe = true
+		resp.SendUser = ctype.UserInfo{
+			ID:       sendUserID,
+			NickName: sendUser.UserInfo.Nickname,
+			Avatar:   sendUser.UserInfo.Avatar,
+		}
+		sendBytes, _ := json.Marshal(resp)
+		_ = sendUser.Conn.WriteMessage(websocket.TextMessage, sendBytes)
+	}
+
+	// === 给接收者发送消息（仅当在线）===
+	if ok1 {
+		resp.IsMe = false
+		// 接收者在线，使用其连接信息
+		resp.RevUser = ctype.UserInfo{
+			ID:       revUserID,
+			NickName: revUser.UserInfo.Nickname,
+			Avatar:   revUser.UserInfo.Avatar,
+		}
+		recvBytes, _ := json.Marshal(resp)
+		_ = revUser.Conn.WriteMessage(websocket.TextMessage, recvBytes)
+	} else {
+		// 接收者不在线，需要拿接收者的信息 → 存离线消息（建议实现）
+		userBaseInfo, err := svcCtx.UserRpc.UserBaseInfo(context.Background(), &user_rpc.UserBaseInfoRequest{
+			UserId: uint32(revUserID),
+		})
+		if err != nil {
+			logx.Error(err)
+			return
+		}
+		resp.RevUser = ctype.UserInfo{
+			ID:       revUserID,
+			NickName: userBaseInfo.NickName,
+			Avatar:   userBaseInfo.Avatar,
+		}
+		//不在线，那就不需要发送了，消息入库即可
+		InsertMsgByChat(svcCtx.DB, revUserID, sendUserID, msg)
+		logx.Infof("User %d is offline, storing offline message with ID %d", revUserID, msgID)
+		// storeOfflineMessage(svcCtx, revUserID, resp)
+	}
 }

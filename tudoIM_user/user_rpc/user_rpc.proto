@@ -29,6 +29,14 @@ message UserInfo{
   string nick_name = 1;
   string avatar = 2;
 }
+message UserBaseInfoRequest{
+  uint32 user_id = 1;
+}
+message UserBaseInfoResponse{
+  uint32 user_id =1;
+  string nick_name = 2;
+  string avatar = 3;
+}
 
 message UserListInfoRequest{
   repeated uint32 user_id_list = 1; //用户id列表
@@ -58,7 +66,8 @@ message FriendListResponse{
 service Users {
   rpc UserCreate(UserCreateRequest) returns(UserCreateResponse); // 创建用户
   rpc UserInfo(UserInfoRequest) returns(UserInfoResponse); //用户信息
-  rpc UserListInfo (UserListInfoRequest) returns (UserListInfoResponse); //用户信息
+  rpc UserBaseInfo(UserBaseInfoRequest) returns (UserBaseInfoResponse);//用户基础信息
+  rpc UserListInfo (UserListInfoRequest) returns (UserListInfoResponse); //用户信息列表
   rpc IsFriend (IsFriendRequest) returns (IsFriendResponse); //是否是好友
   rpc FriendList(FriendListRequest) returns (FriendListResponse); //好友列表
 }

@@ -94,18 +94,25 @@ type VideoTelMsg struct {
 }
 type RecallMsg struct {
 	Notice    string `gorm:"size:64" json:"notice"` //撤回的提示词
+	MsgID     uint   `json:"msg_id"`                //需要撤回的消息ID *入参必填*
 	OriginMsg *Msg   `json:"origin_msg"`            //源消息
 }
 type ReplyMsg struct {
-	MsgId      uint   `json:"msg_id"`
-	Content    string `gorm:"size:256" json:"content"`
-	MsgContent *Msg   `json:"msg_content"`
+	MsgId         uint      `json:"msg_id"`
+	Content       string    `gorm:"size:256" json:"content"`
+	MsgContent    *Msg      `json:"msg_content"`
+	UserId        uint      `json:"user_id"`         //被回复人的ID
+	UserNickName  string    `json:"user_nick_name"`  //被回复人的昵称
+	OriginMsgDate time.Time `json:"origin_msg_date"` //被回复消息的时间
 }
 
 type QuoteMsg struct {
-	MsgId      uint   `json:"msg_id"`
-	Content    string `gorm:"size:256" json:"content"`
-	MsgContent *Msg   `json:"msg_content"`
+	MsgId         uint      `json:"msg_id"`
+	Content       string    `gorm:"size:256" json:"content"`
+	MsgContent    *Msg      `json:"msg_content"`
+	UserId        uint      `json:"user_id"`         //被引用人的ID
+	UserNickName  string    `json:"user_nick_name"`  //被引用人的昵称
+	OriginMsgDate time.Time `json:"origin_msg_date"` //被引用消息的时间
 }
 type AtMsg struct {
 	UserId     uint   `json:"user_id"`

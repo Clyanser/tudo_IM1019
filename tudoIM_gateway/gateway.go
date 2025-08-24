@@ -139,7 +139,7 @@ func (g *Gateway) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	// 8. 日志
 	latency := time.Since(start)
-	logx.Infof("method=%s path=%s status=%d latency=%v", req.Method, req.URL.Path, rw.Header().Get("Status"), latency)
+	logx.Infof("method=%s path=%s status=%s latency=%v", req.Method, req.URL.Path, rw.Header().Get("Status"), latency)
 }
 
 // authenticate 调用认证服务验证请求
