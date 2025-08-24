@@ -285,6 +285,11 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 					SendTipErrMsg(conn, "消息发送失败")
 					continue
 				}
+				//回复的这个消息,只能是本人或者接收方发出的
+				if !(msgModel.SendUserID == req.UserID && msgModel.RevUserID == request.RevUserID) || msgModel.SendUserID == request.RevUserID && msgModel.RevUserID == req.UserID {
+					SendTipErrMsg(conn, "只能回复自己或者对方的消息！")
+					continue
+				}
 				//获取用户基本信息
 				userBaseInfo, err := svcCtx.UserRpc.UserBaseInfo(context.Background(), &user_rpc.UserBaseInfoRequest{
 					UserId: uint32(msgModel.SendUserID),
@@ -298,6 +303,7 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 				request.Msg.ReplyMsg.UserId = msgModel.SendUserID
 				request.Msg.ReplyMsg.UserNickName = userBaseInfo.NickName
 				request.Msg.ReplyMsg.OriginMsgDate = msgModel.CreatedAt
+
 			case ctype.QuoteMsgType:
 				//	引用消息
 				if request.Msg.QuoteMsg == nil {
