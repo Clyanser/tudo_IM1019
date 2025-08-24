@@ -304,7 +304,31 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 					logx.Error("引用消息体为空")
 					continue
 				}
-
+				if request.Msg.QuoteMsg.MsgId == 0 {
+					logx.Error("引用的消息id必填")
+					continue
+				}
+				//获取原消息
+				var msgModel chat_models.ChatModel
+				err = svcCtx.DB.Take(&msgModel, request.Msg.QuoteMsg.MsgId).Error
+				if err != nil {
+					logx.Error(err)
+					SendTipErrMsg(conn, "消息发送失败")
+					continue
+				}
+				//获取用户基本信息
+				userBaseInfo, err := svcCtx.UserRpc.UserBaseInfo(context.Background(), &user_rpc.UserBaseInfoRequest{
+					UserId: uint32(msgModel.SendUserID),
+				})
+				if err != nil {
+					logx.Error(err)
+					return
+				}
+				//	构造响应
+				request.Msg.QuoteMsg.MsgContent = &msgModel.Msg
+				request.Msg.QuoteMsg.UserId = msgModel.SendUserID
+				request.Msg.QuoteMsg.UserNickName = userBaseInfo.NickName
+				request.Msg.QuoteMsg.OriginMsgDate = msgModel.CreatedAt
 			default:
 			}
 
