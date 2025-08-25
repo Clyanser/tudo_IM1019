@@ -263,6 +263,7 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 				err = svcCtx.DB.Model(&msgModel).Updates(chat_models.ChatModel{
 					MsgPreview: "[撤回消息 -]" + content,
+					MsgType:    ctype.ReplyMsgType,
 					Msg: ctype.Msg{
 						Type: ctype.RecallMsgType,
 						RecallMsg: &ctype.RecallMsg{
@@ -296,6 +297,11 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 				if err != nil {
 					logx.Error(err)
 					SendTipErrMsg(conn, "消息发送失败")
+					continue
+				}
+				//不能回复撤回消息
+				if msgModel.MsgType == ctype.RecallMsgType {
+					SendTipErrMsg(conn, "该消息已撤回，不能回复")
 					continue
 				}
 				//回复的这个消息,只能是本人或者接收方发出的

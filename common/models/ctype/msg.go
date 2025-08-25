@@ -105,7 +105,7 @@ type VideoTelMsg struct {
 type RecallMsg struct {
 	Notice    string `gorm:"size:64" json:"notice"` //撤回的提示词
 	MsgID     uint   `json:"msg_id"`                //需要撤回的消息ID *入参必填*
-	OriginMsg *Msg   `json:"origin_msg"`            //源消息
+	OriginMsg *Msg   `json:"origin_msg,omitempty"`  //源消息
 }
 type ReplyMsg struct {
 	MsgId         uint      `json:"msg_id"`
