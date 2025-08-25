@@ -53,17 +53,17 @@ type Msg struct {
 }
 
 func (c *Msg) Scan(value interface{}) error {
-	err := json.Unmarshal(value.([]byte), c)
-	if err != nil {
-		return err
-	}
-	if c.Type == RecallMsgType {
-		//如果这个消息是撤回消息，那就不要把原消息传回
-		if c.RecallMsg != nil {
-			c.RecallMsg.OriginMsg = nil
-		}
-	}
-	return nil
+	//err := json.Unmarshal(value.([]byte), c)
+	//if err != nil {
+	//	return err
+	//}
+	//if c.Type == RecallMsgType {
+	//	//如果这个消息是撤回消息，那就不要把原消息传回
+	//	if c.RecallMsg != nil {
+	//		c.RecallMsg.OriginMsg = nil
+	//	}
+	//}
+	return json.Unmarshal(value.([]byte), c)
 }
 func (c Msg) Value() (driver.Value, error) {
 	b, err := json.Marshal(c)
@@ -110,7 +110,7 @@ type RecallMsg struct {
 type ReplyMsg struct {
 	MsgId         uint      `json:"msg_id"`
 	Content       string    `gorm:"size:256" json:"content"`
-	MsgContent    *Msg      `json:"msg_content"`
+	MsgContent    *Msg      `json:"msg_content,omitempty"`
 	UserId        uint      `json:"user_id"`         //被回复人的ID
 	UserNickName  string    `json:"user_nick_name"`  //被回复人的昵称
 	OriginMsgDate time.Time `json:"origin_msg_date"` //被回复消息的时间

@@ -263,7 +263,7 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 				err = svcCtx.DB.Model(&msgModel).Updates(chat_models.ChatModel{
 					MsgPreview: "[撤回消息 -]" + content,
-					MsgType:    ctype.ReplyMsgType,
+					MsgType:    ctype.RecallMsgType,
 					Msg: ctype.Msg{
 						Type: ctype.RecallMsgType,
 						RecallMsg: &ctype.RecallMsg{
@@ -282,34 +282,40 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 				//request.Msg.RecallMsg.OriginMsg = &originMsg
 				//	把原消息置为空
 			case ctype.ReplyMsgType:
-				//	回复消息
-				if request.Msg.ReplyMsg == nil {
-					logx.Error("回复消息体为空")
+				// 回复消息
+				// 先校验
+				if request.Msg.ReplyMsg == nil || request.Msg.ReplyMsg.MsgId == 0 {
+					SendTipErrMsg(conn, "回复消息id必填")
 					continue
 				}
-				if request.Msg.ReplyMsg.MsgId == 0 {
-					logx.Error("回复的消息id必填")
-					continue
-				}
-				//获取原消息
+
+				// 找这个原消息
 				var msgModel chat_models.ChatModel
 				err = svcCtx.DB.Take(&msgModel, request.Msg.ReplyMsg.MsgId).Error
 				if err != nil {
-					logx.Error(err)
-					SendTipErrMsg(conn, "消息发送失败")
+					SendTipErrMsg(conn, "消息不存在")
 					continue
 				}
-				//不能回复撤回消息
+
+				// 不能回复撤回消息
 				if msgModel.MsgType == ctype.RecallMsgType {
-					SendTipErrMsg(conn, "该消息已撤回，不能回复")
+					SendTipErrMsg(conn, "该消息已撤回")
 					continue
 				}
-				//回复的这个消息,只能是本人或者接收方发出的
-				if !(msgModel.SendUserID == req.UserID && msgModel.RevUserID == request.RevUserID) || msgModel.SendUserID == request.RevUserID && msgModel.RevUserID == req.UserID {
-					SendTipErrMsg(conn, "只能回复自己或者对方的消息！")
+
+				// 回复的这个消息，必须是你自己或者当前和你聊天这个人发出来的
+
+				// 原消息必须是 当前你要和对方聊的  原消息就会有一个 发送人id和接收人id，  我们聊天也会有一个发送人id和接收人id
+				// 因为回复消息可以回复自己的，也可以回复别人的
+				// 如果回复只能回复别人的？那么条件怎么写?
+				fmt.Println(msgModel.SendUserID, msgModel.RevUserID)
+				fmt.Println(req.UserID, request.RevUserID)
+				if !((msgModel.SendUserID == req.UserID && msgModel.RevUserID == request.RevUserID) ||
+					(msgModel.SendUserID == request.RevUserID && msgModel.RevUserID == req.UserID)) {
+					SendTipErrMsg(conn, "只能回复自己或者对方的消息")
 					continue
 				}
-				//获取用户基本信息
+
 				userBaseInfo, err := svcCtx.UserRpc.UserBaseInfo(context.Background(), &user_rpc.UserBaseInfoRequest{
 					UserId: uint32(msgModel.SendUserID),
 				})
@@ -317,7 +323,7 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 					logx.Error(err)
 					return
 				}
-				//	构造响应
+
 				request.Msg.ReplyMsg.MsgContent = &msgModel.Msg
 				request.Msg.ReplyMsg.UserId = msgModel.SendUserID
 				request.Msg.ReplyMsg.UserNickName = userBaseInfo.NickName
