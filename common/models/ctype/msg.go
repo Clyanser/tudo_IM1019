@@ -53,7 +53,17 @@ type Msg struct {
 }
 
 func (c *Msg) Scan(value interface{}) error {
-	return json.Unmarshal(value.([]byte), c)
+	err := json.Unmarshal(value.([]byte), c)
+	if err != nil {
+		return err
+	}
+	if c.Type == RecallMsgType {
+		//如果这个消息是撤回消息，那就不要把原消息传回
+		if c.RecallMsg != nil {
+			c.RecallMsg.OriginMsg = nil
+		}
+	}
+	return nil
 }
 func (c Msg) Value() (driver.Value, error) {
 	b, err := json.Marshal(c)
