@@ -38,18 +38,18 @@ func (c SystemMsg) Value() (driver.Value, error) {
 type Msg struct {
 	Type        MsgType      `json:"type"`
 	Content     *string      `json:"content"`
-	TextMsg     *TextMsg     `json:"text_msg"`
-	ImageMsg    *ImageMsg    `json:"image_msg"`
-	VideoMsg    *VideoMsg    `json:"video_msg"`
-	FileMsg     *FileMsg     `json:"file_msg"`
-	VoiceMsg    *VoiceMsg    `json:"voice_msg"`
-	VoiceTelMsg *VoiceTelMsg `json:"voice_tel_msg"`
-	VideoTelMsg *VideoTelMsg `json:"video_tel_msg"`
-	RecallMsg   *RecallMsg   `json:"recall_msg"`
-	ReplyMsg    *ReplyMsg    `json:"reply_msg"`
-	QuoteMsg    *QuoteMsg    `json:"quote_msg"`
-	AtMsg       *AtMsg       `json:"at_msg"`  //@消息（群聊才有）
-	TipMsg      *TipMsg      `json:"tip_msg"` //一般是不入库的
+	TextMsg     *TextMsg     `json:"text_msg,omitempty"`
+	ImageMsg    *ImageMsg    `json:"image_msg,omitempty"`
+	VideoMsg    *VideoMsg    `json:"video_msg,omitempty"`
+	FileMsg     *FileMsg     `json:"file_msg,omitempty"`
+	VoiceMsg    *VoiceMsg    `json:"voice_msg,omitempty"`
+	VoiceTelMsg *VoiceTelMsg `json:"voice_tel_msg,omitempty"`
+	VideoTelMsg *VideoTelMsg `json:"video_tel_msg,omitempty"`
+	RecallMsg   *RecallMsg   `json:"recall_msg,omitempty"`
+	ReplyMsg    *ReplyMsg    `json:"reply_msg,omitempty"`
+	QuoteMsg    *QuoteMsg    `json:"quote_msg,omitempty"`
+	AtMsg       *AtMsg       `json:"at_msg,omitempty"`  //@消息（群聊才有）
+	TipMsg      *TipMsg      `json:"tip_msg,omitempty"` //一般是不入库的
 }
 
 func (c *Msg) Scan(value interface{}) error {

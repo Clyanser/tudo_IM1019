@@ -230,6 +230,12 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 					SendTipErrMsg(conn, "撤回失败")
 					continue
 				}
+				//已经是撤回消息的，不能再撤回了
+				if msgModel.MsgType == ctype.RecallMsgType {
+					SendTipErrMsg(conn, "已经撤回消息了，您无法再次撤回这条消息")
+					continue
+				}
+
 				//  判断是不是自己发的
 				if msgModel.SendUserID != req.UserID {
 					//	不是自己发的
@@ -249,16 +255,20 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 				content := fmt.Sprintf("%s 撤回了一条消息", userInfo.Nickname)
 				if userInfo.UserConfModel.RecallMessage != nil {
 					logx.Info("使用用户自定义的撤回回复")
-					content = *userInfo.UserConfModel.RecallMessage
+					content = content + *userInfo.UserConfModel.RecallMessage
 				}
+				//自己备份，解决循环引用
+				originMsg := msgModel.Msg
+				originMsg.RecallMsg = nil //这里可能会出现循环引用，拷贝原消息，并把撤回消息置空
 
 				err = svcCtx.DB.Model(&msgModel).Updates(chat_models.ChatModel{
+					MsgPreview: "[撤回消息 -]" + content,
 					Msg: ctype.Msg{
 						Type: ctype.RecallMsgType,
 						RecallMsg: &ctype.RecallMsg{
 							Notice:    content,
 							MsgID:     request.Msg.RecallMsg.MsgID,
-							OriginMsg: &msgModel.Msg,
+							OriginMsg: &originMsg,
 						},
 					},
 				}).Error
@@ -266,6 +276,9 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 					logx.Error(err)
 					continue
 				}
+				//构造响应
+				request.Msg.RecallMsg.Notice = content
+				//request.Msg.RecallMsg.OriginMsg = &originMsg
 				//	把原消息置为空
 			case ctype.ReplyMsgType:
 				//	回复消息
@@ -336,6 +349,9 @@ func chatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 				request.Msg.QuoteMsg.UserNickName = userBaseInfo.NickName
 				request.Msg.QuoteMsg.OriginMsgDate = msgModel.CreatedAt
 			default:
+				logx.Error("非法的消息type")
+				SendTipErrMsg(conn, "消息发送失败，请重试！")
+				continue
 			}
 
 			//先入库
@@ -465,8 +481,8 @@ func SendMsgByUser(svcCtx *svc.ServiceContext, revUserID uint, sendUserID uint, 
 			NickName: revUser.UserInfo.Nickname,
 			Avatar:   revUser.UserInfo.Avatar,
 		}
-		recvBytes, _ := json.Marshal(resp)
-		_ = revUser.Conn.WriteMessage(websocket.TextMessage, recvBytes)
+		revBytes, _ := json.Marshal(resp)
+		_ = revUser.Conn.WriteMessage(websocket.TextMessage, revBytes)
 	} else {
 		// 接收者不在线，需要拿接收者的信息 → 存离线消息（建议实现）
 		userBaseInfo, err := svcCtx.UserRpc.UserBaseInfo(context.Background(), &user_rpc.UserBaseInfoRequest{
